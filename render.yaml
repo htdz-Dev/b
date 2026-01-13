@@ -1,0 +1,61 @@
+# Render.com Blueprint for Laravel Backend
+# https://render.com/docs/blueprint-spec
+
+databases:
+  - name: vibe-db
+    plan: free
+    databaseName: vibe_store
+    user: vibe_user
+
+services:
+  - type: web
+    name: vibe-backend
+    runtime: php
+    plan: free
+    repo: # Will use the connected GitHub repo
+    rootDir: backend
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      php artisan config:cache
+      php artisan route:cache
+      php artisan view:cache
+      php artisan migrate --force
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    envVars:
+      - key: APP_NAME
+        value: "VIBE Store"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false # Set manually in dashboard
+      - key: APP_URL
+        fromService:
+          type: web
+          name: vibe-backend
+          property: host
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vibe-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: FRONTEND_URL
+        sync: false # Set manually: your Vercel URL
+      - key: CHARGILY_API_KEY
+        sync: false # Set manually in dashboard
+      - key: CHARGILY_API_URL
+        value: https://pay.chargily.net/api/v2
+      - key: CHARGILY_SUCCESS_URL
+        sync: false # Set manually: https://your-vercel-url/order-success
+      - key: CHARGILY_FAILURE_URL
+        sync: false # Set manually: https://your-vercel-url/checkout?error=payment_failed
