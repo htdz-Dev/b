@@ -1,7 +1,7 @@
 # Use official PHP 8.2 with Apache
 FROM php:8.2-apache
 
-# Install system dependencies and PHP extensions required by Laravel
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -13,23 +13,14 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
     zip \
-    unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-    pdo \
-    pdo_pgsql \
-    pgsql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip \
-    ctype \
-    fileinfo \
-    tokenizer \
-    xml \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    unzip
+
+# Configure and install PHP extensions (only those not built-in)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
+
+# Clean up
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -40,8 +31,8 @@ WORKDIR /var/www/html
 # Copy all application files
 COPY . .
 
-# Install dependencies with verbose output
-RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist -v
+# Install dependencies
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # Create storage directories
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
