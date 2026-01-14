@@ -28,7 +28,7 @@ class OrderController extends Controller
     {
         $orders = $request->user()
             ->orders()
-            ->with('items')
+            ->with(['items.product.images'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
