@@ -22,27 +22,22 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl opcache
 
 # 3. Get Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # 4. Set working directory
 WORKDIR /var/www/html
 
-# 5. Copy composer files first (for Better Layer Caching)
-COPY composer.json composer.lock ./
-
-# 6. Install dependencies WITHOUT scripts (Prevents errors if app isn't ready)
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --ignore-platform-reqs
-
-# 7. Copy the rest of the application
+# 5. Copy application files
 COPY . .
 
-# 8. Create production .env (Required for artisan commands)
-RUN cp .env.example .env
+# 6. Create .env file with a temporary APP_KEY for build
+RUN cp .env.example .env \
+    && echo "APP_KEY=base64:$(openssl rand -base64 32)" >> .env
 
-# 9. Dump autoload (This runs the scripts now that everything is ready)
-RUN composer dump-autoload --optimize
+# 7. Install dependencies
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --prefer-dist --no-progress
 
-# 10. Set permissions
+# 8. Set permissions
 RUN chown -R www-data:www-data \
     /var/www/html/storage \
     /var/www/html/bootstrap/cache \
@@ -50,14 +45,14 @@ RUN chown -R www-data:www-data \
     /var/www/html/storage \
     /var/www/html/bootstrap/cache
 
-# 11. Configure Apache
+# 9. Configure Apache
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 RUN a2enmod rewrite
 
-# 12. Handle PORT environment variable from Render
+# 10. Handle PORT environment variable from Render
 RUN sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
 
-# 13. Start command
+# 11. Start command - generates new APP_KEY at runtime if needed
 CMD ["sh", "-c", "php artisan config:cache && php artisan route:cache && php artisan migrate --force && apache2-foreground"]
