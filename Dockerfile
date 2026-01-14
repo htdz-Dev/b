@@ -30,8 +30,8 @@ WORKDIR /var/www/html
 # 5. Copy composer files first (for Better Layer Caching)
 COPY composer.json composer.lock ./
 
-# 6. Install dependencies WITHOUT scrips (Prevents errors if app isn't ready)
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress
+# 6. Install dependencies WITHOUT scripts (Prevents errors if app isn't ready)
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --ignore-platform-reqs
 
 # 7. Copy the rest of the application
 COPY . .
